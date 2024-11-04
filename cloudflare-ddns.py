@@ -65,6 +65,19 @@ def deleteEntries(type):
             print("🗑️ Deleted stale record " + identifier)
 
 
+class LogIps:
+    count = 0
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def log(ips):
+        if LogIps.count % 10 == 0:
+            print("📝 Detected IPs: " + str(ips))
+        LogIps.count += 1
+
+
 def getIPs():
     a = None
     aaaa = None
@@ -127,6 +140,7 @@ def getIPs():
         ips["ipv4"] = {"type": "A", "ip": a}
     if aaaa is not None:
         ips["ipv6"] = {"type": "AAAA", "ip": aaaa}
+    LogIps.log(ips)
     return ips
 
 

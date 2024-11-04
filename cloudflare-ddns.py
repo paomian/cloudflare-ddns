@@ -17,12 +17,18 @@ import sys
 import threading
 import time
 import requests
+import functools
 
 CONFIG_PATH = os.environ.get("CONFIG_PATH", os.getcwd())
 # Read in all environment variables that have the correct prefix
 ENV_VARS = {
     key: value for (key, value) in os.environ.items() if key.startswith("CF_DDNS_")
 }
+
+DEFAULT_TIMEOUT = 60
+
+CLIENT = requests.Session()
+CLIENT.request = functools.partial(CLIENT.request, timeout=DEFAULT_TIMEOUT)
 
 
 class GracefulExit:
@@ -67,7 +73,7 @@ def getIPs():
     global purgeUnknownRecords
     if ipv4_enabled:
         try:
-            a = requests.get("https://1.1.1.1/cdn-cgi/trace").text.split("\n")
+            a = CLIENT.get("https://1.1.1.1/cdn-cgi/trace").text.split("\n")
             a.pop()
             a = dict(s.split("=") for s in a)["ip"]
         except Exception:
@@ -77,7 +83,7 @@ def getIPs():
                 print("🧩 IPv4 not detected via 1.1.1.1, trying 1.0.0.1")
             # Try secondary IP check
             try:
-                a = requests.get("https://1.0.0.1/cdn-cgi/trace").text.split("\n")
+                a = CLIENT.get("https://1.0.0.1/cdn-cgi/trace").text.split("\n")
                 a.pop()
                 a = dict(s.split("=") for s in a)["ip"]
             except Exception:
@@ -91,7 +97,7 @@ def getIPs():
                     deleteEntries("A")
     if ipv6_enabled:
         try:
-            aaaa = requests.get(
+            aaaa = CLIENT.get(
                 "https://[2606:4700:4700::1111]/cdn-cgi/trace"
             ).text.split("\n")
             aaaa.pop()
@@ -102,7 +108,7 @@ def getIPs():
                 shown_ipv6_warning = True
                 print("🧩 IPv6 not detected via 1.1.1.1, trying 1.0.0.1")
             try:
-                aaaa = requests.get(
+                aaaa = CLIENT.get(
                     "https://[2606:4700:4700::1001]/cdn-cgi/trace"
                 ).text.split("\n")
                 aaaa.pop()
@@ -246,13 +252,13 @@ def cf_api(endpoint, method, config, headers={}, data=False):
         }
     try:
         if data == False:
-            response = requests.request(
+            response = CLIENT.request(
                 method,
                 "https://api.cloudflare.com/client/v4/" + endpoint,
                 headers=headers,
             )
         else:
-            response = requests.request(
+            response = CLIENT.request(
                 method,
                 "https://api.cloudflare.com/client/v4/" + endpoint,
                 headers=headers,
